@@ -3,6 +3,7 @@ import gradio as gr
 from PIL import Image
 import os
 import sys
+import numpy as np
 
 # Add project root to path so 'src' can be found
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,7 +32,7 @@ CLASSES = {
 }
 
 # Configuration
-MODEL_PATH = 'models/best_traffic_sign_model.pth'
+MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models', 'best_traffic_sign_model.pth')
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 DEVICE_NAME = torch.cuda.get_device_name(0) if DEVICE == 'cuda' else 'CPU'
 
@@ -46,8 +47,12 @@ transform = get_transforms(train=False)
 
 def predict(image):
     if image is None:
-        return "Please upload an image."
+        return None, "Please capture or upload an image."
     
+    # Ensure image is PIL
+    if not isinstance(image, Image.Image):
+        image = Image.fromarray(image)
+        
     # Preprocess
     img_tensor = transform(image).unsqueeze(0).to(DEVICE)
     
@@ -63,21 +68,83 @@ def predict(image):
         label = CLASSES[top_indices[i].item()]
         results[label] = float(top_probs[i])
         
-    return results, f"Inference Running on: {DEVICE_NAME}"
+    return results, f"Inference engine: {DEVICE_NAME}"
 
-# Gradio Interface
-interface = gr.Interface(
-    fn=predict,
-    inputs=gr.Image(type="pil"),
-    outputs=[
-        gr.Label(num_top_classes=3, label="Top Predictions"),
-        gr.Textbox(label="Hardware Device")
-    ],
-    title="Traffic Sign Recognition",
-    description=f"Upload a traffic sign image to classify it. [Running on: {DEVICE_NAME}]",
-    examples=[],
-    theme="soft"
-)
+# Custom CSS for Premium Look
+custom_css = """
+#project-container {
+    max-width: 1000px;
+    margin: auto;
+}
+.header-box {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+.status-badge {
+    padding: 5px 15px;
+    background: #065f46;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+"""
+
+with gr.Blocks(theme=gr.themes.Soft()) as demo:
+    with gr.Column(elem_id="project-container"):
+        # Header
+        with gr.Group(elem_classes="header-box"):
+            gr.Markdown("# 🚦 Traffic Sign Recognition System")
+            gr.Markdown(f"### Internship Project Dashboard | Status: <span class='status-badge'>Online</span>")
+            gr.Markdown(f"Current Deployment: **{DEVICE_NAME} Acceleration**")
+
+        with gr.Row():
+            # Left Column: Input
+            with gr.Column(scale=1):
+                gr.Markdown("### 📸 Input Source")
+                input_mode = gr.Tabs()
+                with input_mode:
+                    with gr.TabItem("Upload Image"):
+                        upload_input = gr.Image(type="pil", label="Pick a sign image", sources=["upload"])
+                    with gr.TabItem("Webcam Mode"):
+                        webcam_input = gr.Image(type="pil", label="Capture real-time", sources=["webcam"])
+                
+                predict_btn = gr.Button("🚀 Analyze Sign", variant="primary")
+
+            # Right Column: Results
+            with gr.Column(scale=1):
+                gr.Markdown("### 📊 Prediction Results")
+                output_labels = gr.Label(num_top_classes=3, label="Top Classifications")
+                device_info = gr.Textbox(label="System Metadata", interactive=False)
+                
+                with gr.Accordion("How it works", open=False):
+                    gr.Markdown("""
+                        This system uses a Deep Convolutional Neural Network (CNN) trained on the GTSRB dataset.
+                        It analyzes 43 different categories of signs across the European standard.
+                    """)
+
+        # Gallery / Reference (Optional - can be expanded)
+        gr.Markdown("---")
+        with gr.Row():
+            with gr.Column():
+                gr.Markdown("### ℹ️ Dataset Overview")
+                gr.Markdown("The model is trained on **GTSRB (German Traffic Sign Recognition Benchmark)**, containing over 50,000 images across 43 classes.")
+
+    # Event handlers (Updated for robustness)
+    predict_btn.click(
+        fn=predict,
+        inputs=upload_input, # Default to upload for button
+        outputs=[output_labels, device_info]
+    )
+    
+    # Auto-predict on change
+    upload_input.change(fn=predict, inputs=upload_input, outputs=[output_labels, device_info])
+    webcam_input.change(fn=predict, inputs=webcam_input, outputs=[output_labels, device_info])
 
 if __name__ == "__main__":
-    interface.launch()
+    # In Gradio 6+, css and theme should ideally be in launch or constructor depending on specifics,
+    # but the warning said move them to launch.
+    demo.launch(css=custom_css)
