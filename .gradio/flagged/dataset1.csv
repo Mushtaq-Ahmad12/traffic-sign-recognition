@@ -1,0 +1,2 @@
+image,output,timestamp
+.gradio\flagged\image\7bdfb76ba9026b5f71ac\images.jpg,"{""label"": ""Traffic signals"", ""confidences"": [{""label"": ""Traffic signals"", ""confidence"": 0.1426858752965927}, {""label"": ""Bumpy road"", ""confidence"": 0.08288802951574326}, {""label"": ""General caution"", ""confidence"": 0.06495597958564758}]}",2026-04-09 15:24:24.439456

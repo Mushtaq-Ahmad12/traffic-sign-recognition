@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.env
+
+# Data and Models
+data/
+models/*.pth
+!models/best_traffic_sign_model.pth
+
+# Logs and Metrics
+logs/*.png
+logs/*.txt
+
+# IDEs
+.vscode/
+.idea/
