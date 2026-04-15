@@ -55,7 +55,7 @@ def get_dataloaders(data_dir='data', batch_size=64, val_split=0.2, subset_fracti
         transform=get_transforms(train=False)
     )
     
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     

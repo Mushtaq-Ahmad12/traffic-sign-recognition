@@ -56,7 +56,14 @@ class TrafficSignCNN(nn.Module):
         x = x.view(-1, 256 * 4 * 4)
         
         # FC layers
-        x = F.relu(self.bn6(self.fc1(x)))
+        x = self.fc1(x)
+        if self.training and x.size(0) <= 1:
+            # Fallback for batch size 1 to prevent BatchNorm error
+            self.bn6.eval()
+            x = F.relu(self.bn6(x))
+            self.bn6.train()
+        else:
+            x = F.relu(self.bn6(x))
         x = self.dropout4(x)
         x = self.fc2(x)
         
@@ -65,6 +72,7 @@ class TrafficSignCNN(nn.Module):
 if __name__ == "__main__":
     # Test model with a dummy input
     model = TrafficSignCNN()
+    model.eval() # Prevent BatchNorm error with batch size 1
     dummy_input = torch.randn(1, 3, 32, 32)
     output = model(dummy_input)
     print(f"Output shape: {output.shape}")

@@ -14,6 +14,8 @@ def train_model(epochs=30, lr=0.001, batch_size=128, device='cuda' if torch.cuda
     
     # 1. Get dataloaders (using 30% subset as requested)
     train_loader, val_loader, _ = get_dataloaders(batch_size=batch_size, subset_fraction=0.3)
+    print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
+    print(f"Batch size: {batch_size}")
     
     # 2. Initialize model, loss, and optimizer
     model = TrafficSignCNN(num_classes=43).to(device)
