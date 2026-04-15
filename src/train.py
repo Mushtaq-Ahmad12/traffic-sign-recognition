@@ -12,8 +12,8 @@ def train_model(epochs=30, lr=0.001, batch_size=128, device='cuda' if torch.cuda
     print(f"TRAINING ON DEVICE: {device_name}")
     print(f"========================================")
     
-    # 1. Get dataloaders (using 30% subset as requested)
-    train_loader, val_loader, _ = get_dataloaders(batch_size=batch_size, subset_fraction=0.3)
+    # 1. Get dataloaders (using 100% of data for max accuracy)
+    train_loader, val_loader, _ = get_dataloaders(batch_size=batch_size, subset_fraction=1.0)
     print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
     print(f"Batch size: {batch_size}")
     
@@ -83,4 +83,4 @@ def train_model(epochs=30, lr=0.001, batch_size=128, device='cuda' if torch.cuda
             print("Model saved!")
 
 if __name__ == "__main__":
-    train_model()
+    train_model(epochs=20)

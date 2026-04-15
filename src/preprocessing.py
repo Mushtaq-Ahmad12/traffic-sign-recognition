@@ -3,21 +3,30 @@ from torchvision import transforms, datasets
 from torch.utils.data import DataLoader, random_split
 
 def get_transforms(img_size=32, train=True):
+    # GTSRB specific normalization
+    mean = [0.3337, 0.3064, 0.3171]
+    std = [0.2672, 0.2564, 0.2629]
+    
+    transform_list = [
+        transforms.Resize((img_size, img_size)),
+        # Converting to grayscale but keeping 3 channels helps the model 
+        # focus on shape/edges rather than being confused by extreme lighting
+        transforms.Grayscale(num_output_channels=3),
+    ]
+    
     if train:
-        return transforms.Compose([
-            transforms.Resize((img_size, img_size)),
+        transform_list.extend([
             transforms.RandomRotation(15),
             transforms.RandomAffine(0, shear=10, scale=(0.8, 1.2)),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.ColorJitter(brightness=0.4, contrast=0.4),
         ])
-    else:
-        return transforms.Compose([
-            transforms.Resize((img_size, img_size)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
+    
+    transform_list.extend([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std)
+    ])
+    
+    return transforms.Compose(transform_list)
 
 def get_dataloaders(data_dir='data', batch_size=64, val_split=0.2, subset_fraction=None):
     # Training set

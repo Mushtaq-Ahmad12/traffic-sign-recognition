@@ -40,6 +40,9 @@ DEVICE_NAME = torch.cuda.get_device_name(0) if DEVICE == 'cuda' else 'CPU'
 model = TrafficSignCNN(num_classes=43).to(DEVICE)
 if os.path.exists(MODEL_PATH):
     model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+    print(f"Successfully loaded model from: {MODEL_PATH}")
+else:
+    print(f"WARNING: Model file not found at {MODEL_PATH}. Using random weights!")
 model.eval()
 
 # Preprocessing transforms
@@ -47,7 +50,7 @@ transform = get_transforms(train=False)
 
 def predict(image):
     if image is None:
-        return None, "Please capture or upload an image."
+        return None, None, "Please capture or upload an image."
     
     # Ensure image is PIL
     if not isinstance(image, Image.Image):
@@ -55,6 +58,12 @@ def predict(image):
         
     # Preprocess
     img_tensor = transform(image).unsqueeze(0).to(DEVICE)
+    
+    # Prepare visualization for UI
+    vis_img = img_tensor[0].cpu().permute(1, 2, 0).numpy()
+    # Partial denormalization for display
+    vis_img = (vis_img * np.array([0.2672, 0.2564, 0.2629])) + np.array([0.3337, 0.3064, 0.3171])
+    vis_img = np.clip(vis_img, 0, 1)
     
     with torch.no_grad():
         outputs = model(img_tensor)
@@ -68,81 +77,97 @@ def predict(image):
         label = CLASSES[top_indices[i].item()]
         results[label] = float(top_probs[i])
         
-    return results, f"Inference engine: {DEVICE_NAME}"
+    return results, vis_img, f"System Engine: {DEVICE_NAME} | Status: Optimized"
 
 # Custom CSS for Premium Look
 custom_css = """
 #project-container {
-    max-width: 1000px;
+    max-width: 1100px;
     margin: auto;
 }
 .header-box {
     text-align: center;
-    padding: 20px;
-    background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%);
+    padding: 30px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
     color: white;
-    border-radius: 10px;
-    margin-bottom: 20px;
+    border-radius: 15px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
 }
 .status-badge {
     padding: 5px 15px;
-    background: #065f46;
+    background: #10b981;
     border-radius: 20px;
     font-size: 0.8em;
     font-weight: bold;
+    color: white;
+}
+.card {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 15px;
+    background: #f8fafc;
 }
 """
 
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
+with gr.Blocks(theme=gr.themes.Default(primary_hue="blue", secondary_hue="slate")) as demo:
     with gr.Column(elem_id="project-container"):
         # Header
         with gr.Group(elem_classes="header-box"):
-            gr.Markdown("# 🚦 Traffic Sign Recognition System")
-            gr.Markdown(f"### Internship Project Dashboard | Status: <span class='status-badge'>Online</span>")
-            gr.Markdown(f"Current Deployment: **{DEVICE_NAME} Acceleration**")
+            gr.Markdown("# 🚦 Smart Traffic Sign Analyzer")
+            gr.Markdown(f"### Computer Vision Internship Project v2.0 | Status: <span class='status-badge'>Neural Engine Active</span>")
+            gr.Markdown(f"Hardware Acceleration: **{DEVICE_NAME} Enabled**")
 
         with gr.Row():
             # Left Column: Input
             with gr.Column(scale=1):
-                gr.Markdown("### 📸 Input Source")
-                input_mode = gr.Tabs()
-                with input_mode:
-                    with gr.TabItem("Upload Image"):
-                        upload_input = gr.Image(type="pil", label="Pick a sign image", sources=["upload"])
-                    with gr.TabItem("Webcam Mode"):
-                        webcam_input = gr.Image(type="pil", label="Capture real-time", sources=["webcam"])
+                gr.Markdown("### 📸 Image Acquisition")
+                with gr.Tabs():
+                    with gr.TabItem("File Upload"):
+                        upload_input = gr.Image(type="pil", label="Drop or click to upload", sources=["upload"])
+                    with gr.TabItem("Live Capture"):
+                        webcam_input = gr.Image(type="pil", label="Webcam snapshot", sources=["webcam"])
                 
-                predict_btn = gr.Button("🚀 Analyze Sign", variant="primary")
+                predict_btn = gr.Button("🚀 Execute Neural Analysis", variant="primary", size="lg")
 
-            # Right Column: Results
+            # Middle Column: Analysis Insight
             with gr.Column(scale=1):
-                gr.Markdown("### 📊 Prediction Results")
-                output_labels = gr.Label(num_top_classes=3, label="Top Classifications")
-                device_info = gr.Textbox(label="System Metadata", interactive=False)
+                gr.Markdown("### 🔍 Model Vision")
+                with gr.Group(elem_classes="card"):
+                    vision_output = gr.Image(label="Neural Preprocessing View", interactive=False)
+                    gr.Markdown("*This view shows how the AI 'sees' the image after grayscale and normalization.*")
+
+            # Right Column: Decision
+            with gr.Column(scale=1):
+                gr.Markdown("### 📊 Decision Output")
+                output_labels = gr.Label(num_top_classes=3, label="Class Probabilities")
+                device_info = gr.Textbox(label="Backend Metadata", interactive=False)
                 
-                with gr.Accordion("How it works", open=False):
+                with gr.Accordion("Model Architecture Details", open=False):
                     gr.Markdown("""
-                        This system uses a Deep Convolutional Neural Network (CNN) trained on the GTSRB dataset.
-                        It analyzes 43 different categories of signs across the European standard.
+                        **Backbone**: 6-Layer Deep CNN
+                        **Optimizer**: Adam with ReduceLROnPlateau
+                        **Preprocessing**: Grayscale (3-channel) + GTSRB Normalization
+                        **Target**: 43 European Traffic Sign Categories
                     """)
 
-        # Gallery / Reference (Optional - can be expanded)
+        # Footer
         gr.Markdown("---")
         with gr.Row():
             with gr.Column():
-                gr.Markdown("### ℹ️ Dataset Overview")
-                gr.Markdown("The model is trained on **GTSRB (German Traffic Sign Recognition Benchmark)**, containing over 50,000 images across 43 classes.")
+                gr.Markdown("### ℹ️ Project Context")
+                gr.Markdown("Developing robust inference for autonomous vehicle navigation using the German Traffic Sign Recognition Benchmark (GTSRB).")
 
-    # Event handlers (Updated for robustness)
+    # Event handlers
     predict_btn.click(
         fn=predict,
-        inputs=upload_input, # Default to upload for button
-        outputs=[output_labels, device_info]
+        inputs=upload_input,
+        outputs=[output_labels, vision_output, device_info]
     )
     
-    # Auto-predict on change
-    upload_input.change(fn=predict, inputs=upload_input, outputs=[output_labels, device_info])
-    webcam_input.change(fn=predict, inputs=webcam_input, outputs=[output_labels, device_info])
+    # Auto-predict triggers
+    upload_input.change(fn=predict, inputs=upload_input, outputs=[output_labels, vision_output, device_info])
+    webcam_input.change(fn=predict, inputs=webcam_input, outputs=[output_labels, vision_output, device_info])
 
 if __name__ == "__main__":
     # In Gradio 6+, css and theme should ideally be in launch or constructor depending on specifics,
